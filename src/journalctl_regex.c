@@ -15,9 +15,13 @@ void sig_handler(int signum){
 
 int main (int argc, char *argv[]){
 
+	// measure elapsed wall time
+    	struct timespec start, stop;
+    	clock_gettime(CLOCK_REALTIME, &start);
+
 	signal(SIGINT, sig_handler);
 
-	/* Compile regular expression */
+	// Compile regular expression
 	regex_t regex;
 	int reti = regcomp(&regex, argv[1], 0);
 	if (reti) {
@@ -39,14 +43,14 @@ int main (int argc, char *argv[]){
 
 	const void *data;
   	size_t length;
-	int counter = 0;
+	int log_counter = 0, match_counter=0;
 	SD_JOURNAL_FOREACH(j){
 		if(!active){
 			sd_journal_close(j);
 			return 0;
 		}
   		SD_JOURNAL_FOREACH_DATA(j, data, length){
-			/* Execute regular expression */
+			// Execute regular expression 
 			reti = regexec(&regex, (char *) data, 0, NULL, 0);
 			if (!reti){
 				printf("---------------------------------------------------\n");
@@ -57,14 +61,21 @@ int main (int argc, char *argv[]){
     					printf("%.*s\n", (int) length, (char *) data);
 				}
 				printf("\n");
+				match_counter++;
 				break;
 			}
 		}
-		counter++;
+		log_counter++;
 	}
 
 	sd_journal_close(j);
 
-	printf("\nNumber of logs: %d\n", counter);
+    	clock_gettime(CLOCK_REALTIME, &stop);
+    	double seconds = (double)((stop.tv_sec+stop.tv_nsec*1e-9) - (double)(start.tv_sec+start.tv_nsec*1e-9));
+
+	printf("\nNumber of logs: %d\n", log_counter);
+	printf("Number of matches: %d\n", match_counter);
+    	printf("Wall time: %fs\n", seconds);
+
 	return 0;
 }
